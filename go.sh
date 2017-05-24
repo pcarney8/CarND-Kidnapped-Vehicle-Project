@@ -1,4 +1,5 @@
-#git pull
+#!/usr/bin/env bash
+git pull
 cd build
 cmake .. && make
 cd ..
