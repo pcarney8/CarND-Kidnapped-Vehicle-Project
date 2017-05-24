@@ -101,7 +101,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             double exp_x = pow(observation.x - particle.x, 2)/(2. * std_x * std_x);
             double exp_y = pow(observation.y - particle.y,  2)/(2. * std_y * std_y);
             double w = exp(-1*(exp_x + exp_y))/(2. * pi * std_x * std_y);
-	    cout << "calculated w: " << w << ", ";
+//	    cout << "calculated w: " << w << ", ";
             particle.weight = particle.weight * w;
         }
     }
