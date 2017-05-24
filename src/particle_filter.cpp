@@ -25,14 +25,14 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	normal_distribution<double> dist_theta(theta, std[2]);
 
 	for(int i = 0; i < num_particles; i++){
-		Particle particle = new Particle;
+		Particle particle;
 		particle.id = i;
 		particle.weight = 1;
 		particle.x = dist_x(gen);
 		particle.y = dist_y(gen);
 		particle.theta = dist_theta(gen);
 
-		particles.insert(particle);
+		particles.push_back(particle);
 	}
 }
 
@@ -59,14 +59,14 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
         double theta_add = theta_0 + yaw_rate*delta_t;
 
         //state prediction
-        particle[i].x = x_0 + (velocity/yaw_rate)*(sin(theta_add) - sin(theta_0));
-        particle[i].y = y_0 + (velocity/yaw_rate)*(cos(theta_0) - cos(theta_add));
-        particle[i].theta = theta_add;
+        particles[i].x = x_0 + (velocity/yaw_rate)*(sin(theta_add) - sin(theta_0));
+        particles[i].y = y_0 + (velocity/yaw_rate)*(cos(theta_0) - cos(theta_add));
+        particles[i].theta = theta_add;
 
         //Add noise
-        particle[i].x += dist_x(gen);
-        particle[i].y += dist_y(gen);
-        particle[i].theta += dist_theta(gen);
+        particles[i].x += dist_x(gen);
+        particles[i].y += dist_y(gen);
+        particles[i].theta += dist_theta(gen);
     }
 
 
@@ -85,7 +85,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account 
 	//   for the fact that the map's y-axis actually points downwards.)
 	//   http://planning.cs.uiuc.edu/node99.html
-
+    double pi = atan(1)*4;
 
     for(auto &particle : particles){
         for(auto &observation : observations){
@@ -97,8 +97,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             //calculate the new particle weight and multiply it back into the particle.weight
             double std_x = std_landmark[0];
             double std_y = std_landmark[1];
-            double exp_x = ((observation.x - particle.x) ** 2)/(2. * std_x * std_x);
-            double exp_y = ((observation.y - particle.y) ** 2)/(2. * std_y * std_y);
+            double exp_x = pow(observation.x - particle.x, 2)/(2. * std_x * std_x);
+            double exp_y = pow(observation.y - particle.y,  2)/(2. * std_y * std_y);
             double w = exp(-1*(exp_x + exp_y))/(2. * pi * std_x * std_y);
             particle.weight = particle.weight * w;
         }
@@ -110,24 +110,33 @@ void ParticleFilter::resample() {
 	// TODO: Resample particles with replacement with probability proportional to their weight. 
 	// NOTE: You may find std::discrete_distribution helpful here.
 	//   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
+//    default_random_engine gen;
+//    uniform_real_distribution<> dis(0, 1);
     int index = rand() % num_particles;
     double beta = 0.0;
-    auto max_weight = max_element(begin(particles), end(particles));
+    Particle max_weight_particle = *max_element(begin(particles), end(particles),
+        [] (const Particle& p1, const Particle& p2) {
+        return p1.weight < p2.weight;
+    });
+
+    double max_weight = max_weight_particle.weight;
     vector<Particle> new_particles;
 
-    cout << "debug, max_weight: " << *max_weight << endl;
+    cout << "debug, max_weight: " << max_weight << endl;
+//    cout << "debug, dis(gen): " << dis(gen) << endl;
 
     for(int i = 0; i < num_particles; i++){
-        beta += random * 2.0 * *max_weight;
+//        beta += dis(gen) * 2.0 * max_weight;
+        beta += rand() * 2.0 * max_weight;
 
         //wheel
         while(beta > particles[index].weight){
             beta -= particles[index].weight;
-            index = (index + 1) % *max_weight;
+            index = (index + 1) % num_particles;
         }
 
         //add to new particles vector
-        new_particles.insert(particles[index]);
+        new_particles.push_back(particles[index]);
     }
 
     //assign back to particles with the new particles
