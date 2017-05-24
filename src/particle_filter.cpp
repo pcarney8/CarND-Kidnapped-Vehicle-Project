@@ -17,8 +17,8 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	// Set the number of particles. Initialize all particles to first position (based on estimates of
 	//   x, y, theta and their uncertainties from GPS) and all weights to 1. 
 	default_random_engine gen;
-	num_particles = 1000;
-
+	num_particles = 10;
+	cout << "init particles" << endl;
 	// Add random Gaussian noise to each particle.
 	normal_distribution<double> dist_x(x, std[0]);
 	normal_distribution<double> dist_y(y, std[1]);
@@ -45,7 +45,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
     double std_x = std_pos[0];
     double std_y = std_pos[1];
     double std_theta = std_pos[2];
-
+    cout << "prediction" << endl;
     //Zero mean Gaussians
     normal_distribution<double> dist_x(0, std_x);
     normal_distribution<double> dist_y(0, std_y);
@@ -86,7 +86,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	//   for the fact that the map's y-axis actually points downwards.)
 	//   http://planning.cs.uiuc.edu/node99.html
     double pi = atan(1)*4;
-
+    cout << "update weights" << endl;
     for(auto &particle : particles){
         for(auto &observation : observations){
             //transform observations to map coordinates
@@ -94,12 +94,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             observation.y = particle.y + observation.x*sin(particle.theta) + observation.y*cos(particle.theta);
             //todo: potentially do the dataAssociation
 
+	   //todo: there's a bug somewhere here becuase weights are all 0
             //calculate the new particle weight and multiply it back into the particle.weight
             double std_x = std_landmark[0];
             double std_y = std_landmark[1];
             double exp_x = pow(observation.x - particle.x, 2)/(2. * std_x * std_x);
             double exp_y = pow(observation.y - particle.y,  2)/(2. * std_y * std_y);
             double w = exp(-1*(exp_x + exp_y))/(2. * pi * std_x * std_y);
+	    cout << "calculated w: " << w << ", ";
             particle.weight = particle.weight * w;
         }
     }
@@ -114,6 +116,7 @@ void ParticleFilter::resample() {
 //    uniform_real_distribution<> dis(0, 1);
     int index = rand() % num_particles;
     double beta = 0.0;
+    cout << "resample " << endl;
     Particle max_weight_particle = *max_element(begin(particles), end(particles),
         [] (const Particle& p1, const Particle& p2) {
         return p1.weight < p2.weight;
@@ -121,7 +124,6 @@ void ParticleFilter::resample() {
 
     double max_weight = max_weight_particle.weight;
     vector<Particle> new_particles;
-
     cout << "debug, max_weight: " << max_weight << endl;
 //    cout << "debug, dis(gen): " << dis(gen) << endl;
 
@@ -138,7 +140,7 @@ void ParticleFilter::resample() {
         //add to new particles vector
         new_particles.push_back(particles[index]);
     }
-
+    cout << "finished resample wheel" << endl;
     //assign back to particles with the new particles
     particles = new_particles;
 }
