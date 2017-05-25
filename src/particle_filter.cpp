@@ -82,40 +82,49 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		std::vector<LandmarkObs> observations, Map map_landmarks) {
-	// TODO: Update the weights of each particle using a mult-variate Gaussian distribution. You can read
-	//   more about this distribution here: https://en.wikipedia.org/wiki/Multivariate_normal_distribution
-	// NOTE: The observations are given in the VEHICLE'S coordinate system. Your particles are located
-	//   according to the MAP'S coordinate system. You will need to transform between the two systems.
-	//   Keep in mind that this transformation requires both rotation AND translation (but no scaling).
-	//   The following is a good resource for the theory:
-	//   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-	//   and the following is a good resource for the actual equation to implement (look at equation 
-	//   3.33. Note that you'll need to switch the minus sign in that equation to a plus to account 
-	//   for the fact that the map's y-axis actually points downwards.)
-	//   http://planning.cs.uiuc.edu/node99.html
-   // cout << "update weights" << endl;
-   // cout << "particle weight" << particles[0].weight << endl;
+    LandmarkObs transformed_observation;
+    vector<LandmarkObs> transformed_observations;
+    vector<LandmarkObs> landmarks_in_range;
+    double distance;
+
+    weights.clear();
+    LandmarkObs temp_landmark;
+
     for(auto& particle : particles){
-	particle.weight = 1.0;
+	    particle.weight = 1.0;
+        landmarks_in_range.clear();
+
+        for (auto landmark : map_landmarks.landmark_list) {
+            distance = dist(landmark.x_f, landmark.y_f, particle.x, particle.y);
+            if (distance <= sensor_range) {
+                temp_landmark.x = landmark.x_f;
+                temp_landmark.y = landmark.y_f;
+                temp_landmark.id = landmark.id_i;
+                landmarks_in_range.push_back(temp_landmark);
+            }
+        }
+
+
         for(auto& observation : observations){
             //transform observations to map coordinates
             double new_observation_x = particle.x + observation.x*cos(particle.theta) - observation.y*sin(particle.theta);
             double new_observation_y = particle.y + observation.x*sin(particle.theta) + observation.y*cos(particle.theta);
-            
-            //todo: potentially do the dataAssociation
 
-	   //todo: there's a bug somewhere here becuase weights are all 0
+            double mu_x = landmarks_in_range[observation.id].x;
+            double mu_y = landmarks_in_range[observation.id].y;
+
             //calculate the new particle weight and multiply it back into the particle.weight
             double std_x = std_landmark[0];
             double std_y = std_landmark[1];
-            double exp_x = pow(new_observation_x - particle.x, 2.0)/(2.0 * std_x * std_x);
-            double exp_y = pow(new_observation_y - particle.y,  2.0)/(2.0 * std_y * std_y);
+            double exp_x = pow(new_observation_x - mu_x, 2.0)/(2.0 * std_x * std_x);
+            double exp_y = pow(new_observation_y - mu_y,  2.0)/(2.0 * std_y * std_y);
             double w = (1.0/(2.0 * M_PI * std_x * std_y))*exp(-1.0*(exp_x + exp_y));
-	    cout << "calculated w: " << w << endl;
-	    cout << "particle w: " << particle.weight << endl;
+	        cout << "calculated w: " << w << endl;
+	        cout << "particle w: " << particle.weight << endl;
             particle.weight = particle.weight * w;
         }
-	weights.push_back(particle.weight);
+
+	    weights.push_back(particle.weight);
     }
 
 }
