@@ -82,18 +82,19 @@ void ParticleFilter::prediction(double delta_t, double std_pos[], double velocit
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 		std::vector<LandmarkObs> observations, Map map_landmarks) {
+    LandmarkObs temp_landmark;
     LandmarkObs transformed_observation;
     vector<LandmarkObs> transformed_observations;
     vector<LandmarkObs> landmarks_in_range;
     double distance;
+    double min_dist;
 
     weights.clear();
-    LandmarkObs temp_landmark;
 
     for(auto& particle : particles){
 	    particle.weight = 1.0;
         landmarks_in_range.clear();
-
+        //filter out the closest landmarks
         for (auto landmark : map_landmarks.landmark_list) {
             distance = dist(landmark.x_f, landmark.y_f, particle.x, particle.y);
             if (distance <= sensor_range) {
@@ -104,20 +105,37 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             }
         }
 
+        transformed_observations.clear();
+        //transform observations
+        for (size_t i=0; i<observations.size(); ++i) {
+            transformed_observation.x = particle.x + (observations[i].x * cos(particle.theta)) - (observations[i].y * sin(particle.theta));
+            transformed_observation.y = particle.y + (observations[i].x * sin(particle.theta)) + (observations[i].y * cos(particle.theta));
+            transformed_observations.push_back(t_observation);
+        }
 
+        distance = 0.0;
+        //DataAssociation find closest landmark
+        for (auto& observation : transformed_observations) {
+            min_dist = 999999;
+
+            for (size_t j=0; j<landmarks_in_range.size(); ++j) {
+                distance = dist(observation.x, observation.y, landmarks_in_range[j].x, landmarks_in_range[j].y);
+                if (distance < min_dist) {
+                    min_dist = distance;
+                    observation.id = j;
+                }
+            }
+        }
+
+        //calculate the weight
         for(auto& observation : observations){
-            //transform observations to map coordinates
-            double new_observation_x = particle.x + observation.x*cos(particle.theta) - observation.y*sin(particle.theta);
-            double new_observation_y = particle.y + observation.x*sin(particle.theta) + observation.y*cos(particle.theta);
-
             double mu_x = landmarks_in_range[observation.id].x;
             double mu_y = landmarks_in_range[observation.id].y;
 
-            //calculate the new particle weight and multiply it back into the particle.weight
             double std_x = std_landmark[0];
             double std_y = std_landmark[1];
-            double exp_x = pow(new_observation_x - mu_x, 2.0)/(2.0 * std_x * std_x);
-            double exp_y = pow(new_observation_y - mu_y,  2.0)/(2.0 * std_y * std_y);
+            double exp_x = pow(observation.x - mu_x, 2.0)/(2.0 * std_x * std_x);
+            double exp_y = pow(observation.y - mu_y,  2.0)/(2.0 * std_y * std_y);
             double w = (1.0/(2.0 * M_PI * std_x * std_y))*exp(-1.0*(exp_x + exp_y));
 	        cout << "calculated w: " << w << endl;
 	        cout << "particle w: " << particle.weight << endl;
