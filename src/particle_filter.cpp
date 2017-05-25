@@ -110,7 +110,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         for (size_t i=0; i<observations.size(); ++i) {
             transformed_observation.x = particle.x + (observations[i].x * cos(particle.theta)) - (observations[i].y * sin(particle.theta));
             transformed_observation.y = particle.y + (observations[i].x * sin(particle.theta)) + (observations[i].y * cos(particle.theta));
-            transformed_observations.push_back(t_observation);
+            transformed_observations.push_back(transformed_observation);
         }
 
         distance = 0.0;
